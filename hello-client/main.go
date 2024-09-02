@@ -17,8 +17,13 @@ func main() {
 		"*.heliu.site",
 	)
 
+	var opts []grpc.DialOption
+	// 不带TLS这里是grpc.WithTransportCredentials(insecure.NewCredentials())
+	opts = append(opts, grpc.WithTransportCredentials(creds))
+	opts = append(opts, grpc.WithPerRPCCredentials(&ClientTokenAuth{}))
+
 	// 连接server端，使用ssl加密通信
-	conn, err := grpc.NewClient("127.0.0.1:9090", grpc.WithTransportCredentials(creds))
+	conn, err := grpc.NewClient("127.0.0.1:9090", opts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -36,4 +41,22 @@ func main() {
 	}
 
 	fmt.Println(resp.GetResponseMsg())
+}
+
+// ClientTokenAuth 自定义Token认证
+type ClientTokenAuth struct{}
+
+func (c ClientTokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	// uri: 是请求地址
+	fmt.Printf("uri: %v\n", uri) // uri: [https://*.heliu.site/SayHello]
+
+	fmt.Printf("%v\n", ctx)
+
+	return map[string]string{
+		"Authorization": "Bearer YOUR_ACCESS_TOKEN",
+	}, nil
+}
+
+func (c ClientTokenAuth) RequireTransportSecurity() bool {
+	return true
 }
