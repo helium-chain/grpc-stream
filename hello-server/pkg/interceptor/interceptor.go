@@ -57,3 +57,26 @@ func getClientIp(ctx context.Context) (string, error) {
 
 	return p.Addr.String(), nil
 }
+
+func StreamServerInterceptor() grpc.StreamServerInterceptor {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		wrapper := newStreamServer(ss)
+		return handler(srv, wrapper)
+	}
+}
+
+type streamServe struct {
+	grpc.ServerStream
+}
+
+func newStreamServer(s grpc.ServerStream) grpc.ServerStream {
+	return &streamServe{s}
+}
+
+func (s *streamServe) SendMsg(m interface{}) error {
+	return s.ServerStream.SendMsg(m)
+}
+
+func (s *streamServe) RecvMsg(m interface{}) error {
+	return s.ServerStream.RecvMsg(m)
+}

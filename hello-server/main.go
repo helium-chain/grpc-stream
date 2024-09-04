@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 
@@ -29,7 +30,8 @@ func main() {
 	listen, _ := net.Listen("tcp", ":9090")
 	// 创建grpc服务
 	grpcServer := grpc.NewServer(grpc.Creds(creds),
-		grpc.UnaryInterceptor(interceptor.UnaryServerInterceptor()))
+		grpc.UnaryInterceptor(interceptor.UnaryServerInterceptor()),
+		grpc.StreamInterceptor(interceptor.StreamServerInterceptor()))
 	// 在grpc服务端中注册我们自己编写的服务
 	pb.RegisterSayHelloServer(grpcServer, &server{})
 
@@ -40,6 +42,8 @@ func main() {
 		return
 	}
 }
+
+var _ pb.SayHelloServer = (*server)(nil)
 
 type server struct {
 	pb.UnimplementedSayHelloServer
@@ -67,4 +71,26 @@ func (s *server) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloR
 	// 正常的业务处理
 	fmt.Printf("Received: %s\n", req.RequestName)
 	return &pb.HelloResponse{ResponseMsg: "hello," + req.RequestName + " age:" + strconv.FormatInt(req.Age, 10)}, nil
+}
+
+func (s *server) Channel(stream pb.SayHello_ChannelServer) error {
+	// 服务端在循环中接收客户端发来的数据
+	for {
+		req, err := stream.Recv()
+		if err != nil {
+			// 如果遇到io.EOF标识客户端流关闭
+			if err == io.EOF {
+				return nil
+			}
+			// 其他的io.Error 类型都返回
+			return err
+		}
+		fmt.Printf("Received: %s\n", req.GetValue())
+		// 假设需要返回处理结果
+		err = stream.Send(&pb.Response{Value: "hello," + req.GetValue()})
+		if err != nil {
+			// 服务器发送异常，函数退出，服务端流关闭
+			return err
+		}
+	}
 }

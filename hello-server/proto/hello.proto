@@ -7,6 +7,7 @@ option go_package = ".;service";
 
 service SayHello {
   rpc SayHello (HelloRequest) returns (HelloResponse) {}
+  rpc Channel(stream Request) returns (stream Response) {}
 }
 
 message HelloRequest {
@@ -16,6 +17,14 @@ message HelloRequest {
 
 message HelloResponse {
   string responseMsg = 1;
+}
+
+message Request {
+  string value = 1;
+}
+
+message Response {
+  string value = 1;
 }
 
 // protoc --go_out=. hello.proto

@@ -10,7 +10,6 @@ package service
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -23,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 
 const (
 	SayHello_SayHello_FullMethodName = "/SayHello/SayHello"
+	SayHello_Channel_FullMethodName  = "/SayHello/Channel"
 )
 
 // SayHelloClient is the client API for SayHello service.
@@ -30,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SayHelloClient interface {
 	SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloResponse, error)
+	Channel(ctx context.Context, opts ...grpc.CallOption) (SayHello_ChannelClient, error)
 }
 
 type sayHelloClient struct {
@@ -49,11 +50,43 @@ func (c *sayHelloClient) SayHello(ctx context.Context, in *HelloRequest, opts ..
 	return out, nil
 }
 
+func (c *sayHelloClient) Channel(ctx context.Context, opts ...grpc.CallOption) (SayHello_ChannelClient, error) {
+	stream, err := c.cc.NewStream(ctx, &SayHello_ServiceDesc.Streams[0], SayHello_Channel_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &sayHelloChannelClient{stream}
+	return x, nil
+}
+
+type SayHello_ChannelClient interface {
+	Send(*Request) error
+	Recv() (*Response, error)
+	grpc.ClientStream
+}
+
+type sayHelloChannelClient struct {
+	grpc.ClientStream
+}
+
+func (x *sayHelloChannelClient) Send(m *Request) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *sayHelloChannelClient) Recv() (*Response, error) {
+	m := new(Response)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // SayHelloServer is the server API for SayHello service.
 // All implementations must embed UnimplementedSayHelloServer
 // for forward compatibility
 type SayHelloServer interface {
 	SayHello(context.Context, *HelloRequest) (*HelloResponse, error)
+	Channel(SayHello_ChannelServer) error
 	mustEmbedUnimplementedSayHelloServer()
 }
 
@@ -63,6 +96,9 @@ type UnimplementedSayHelloServer struct {
 
 func (UnimplementedSayHelloServer) SayHello(context.Context, *HelloRequest) (*HelloResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SayHello not implemented")
+}
+func (UnimplementedSayHelloServer) Channel(SayHello_ChannelServer) error {
+	return status.Errorf(codes.Unimplemented, "method Channel not implemented")
 }
 func (UnimplementedSayHelloServer) mustEmbedUnimplementedSayHelloServer() {}
 
@@ -95,6 +131,32 @@ func _SayHello_SayHello_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SayHello_Channel_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(SayHelloServer).Channel(&sayHelloChannelServer{stream})
+}
+
+type SayHello_ChannelServer interface {
+	Send(*Response) error
+	Recv() (*Request, error)
+	grpc.ServerStream
+}
+
+type sayHelloChannelServer struct {
+	grpc.ServerStream
+}
+
+func (x *sayHelloChannelServer) Send(m *Response) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *sayHelloChannelServer) Recv() (*Request, error) {
+	m := new(Request)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // SayHello_ServiceDesc is the grpc.ServiceDesc for SayHello service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -107,6 +169,13 @@ var SayHello_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SayHello_SayHello_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Channel",
+			Handler:       _SayHello_Channel_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "hello.proto",
 }
