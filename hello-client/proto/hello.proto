@@ -5,16 +5,18 @@ syntax = "proto3";
 // . 代表在当前目录生成，service代表了生成的go文件包名是service
 option go_package = ".;service";
 
-//
 service SayHello {
   rpc SayHello (HelloRequest) returns (HelloResponse) {}
 }
 
 message HelloRequest {
   string requestName = 1;
-  // int64 age = 2;
+  int64 age = 2;
 }
 
 message HelloResponse {
   string responseMsg = 1;
 }
+
+// protoc --go_out=. hello.proto
+// protoc --go-grpc_out=. hello.proto

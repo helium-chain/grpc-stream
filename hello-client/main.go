@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"example.com/learn-grpc/hello-client/pkg/interceptor"
 	pb "example.com/learn-grpc/hello-client/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -21,6 +22,8 @@ func main() {
 	// 不带TLS这里是grpc.WithTransportCredentials(insecure.NewCredentials())
 	opts = append(opts, grpc.WithTransportCredentials(creds))
 	opts = append(opts, grpc.WithPerRPCCredentials(&ClientTokenAuth{}))
+	// 添加客户端拦截器
+	opts = append(opts, grpc.WithUnaryInterceptor(interceptor.UnaryClientInterceptor()))
 
 	// 连接server端，使用ssl加密通信
 	conn, err := grpc.NewClient("127.0.0.1:9090", opts...)
@@ -33,7 +36,7 @@ func main() {
 	// 建立连接
 	client := pb.NewSayHelloClient(conn)
 	// 执行rpc调用(这个方法在服务器端来实现并返回结构)
-	resp, err := client.SayHello(context.Background(), &pb.HelloRequest{RequestName: "gh"})
+	resp, err := client.SayHello(context.Background(), &pb.HelloRequest{RequestName: "gh", Age: 12})
 
 	if err != nil {
 		fmt.Printf("%v\n", err)

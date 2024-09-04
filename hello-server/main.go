@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 
+	"example.com/learn-grpc/hello-server/pkg/interceptor"
 	pb "example.com/learn-grpc/hello-server/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -26,7 +28,8 @@ func main() {
 	// 开启端口
 	listen, _ := net.Listen("tcp", ":9090")
 	// 创建grpc服务
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
+	grpcServer := grpc.NewServer(grpc.Creds(creds),
+		grpc.UnaryInterceptor(interceptor.UnaryServerInterceptor()))
 	// 在grpc服务端中注册我们自己编写的服务
 	pb.RegisterSayHelloServer(grpcServer, &server{})
 
@@ -48,7 +51,7 @@ func (s *server) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloR
 	if !ok {
 		return nil, fmt.Errorf("metadata not found")
 	}
-
+	// metadata: map[:authority:[*.heliu.site] authorization:[Bearer YOUR_ACCESS_TOKEN] client-os:[linux] content-type:[application/grpc] user-agent:[grpc-go/1.66.0]]
 	fmt.Println("metadata:", md)
 
 	userId, ok := md["authorization"]
@@ -63,5 +66,5 @@ func (s *server) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloR
 
 	// 正常的业务处理
 	fmt.Printf("Received: %s\n", req.RequestName)
-	return &pb.HelloResponse{ResponseMsg: "hello," + req.RequestName}, nil
+	return &pb.HelloResponse{ResponseMsg: "hello," + req.RequestName + " age:" + strconv.FormatInt(req.Age, 10)}, nil
 }

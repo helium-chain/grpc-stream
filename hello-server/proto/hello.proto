@@ -11,7 +11,7 @@ service SayHello {
 
 message HelloRequest {
   string requestName = 1;
-  // int64 age = 2;
+  int64 age = 2;
 }
 
 message HelloResponse {
